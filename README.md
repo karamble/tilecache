@@ -18,7 +18,7 @@ the tile server, and every tile it has seen keeps working offline.
   with `Cache-Control: no-cache`, so the client tries again later.
 - Responses carry `X-Tile-Cache: HIT | MISS | PLACEHOLDER`, a strong ETag
   derived from the content (`If-None-Match` gets a 304), and
-  `Cache-Control: public, max-age=86400`.
+  `Cache-Control: public, max-age=86400` unless `CacheControl` says otherwise.
 - Every upstream request sends the `UserAgent` you configure.
 
 ## Usage
@@ -58,6 +58,7 @@ L.tileLayer('/tiles/{s}/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 })
 | `RateLimit`      | 0                                                    | Minimum spacing between upstream request starts. |
 | `PreloadDelay`   | 250ms                                                | Pause between preload fetches. The pause actually used is the larger of `PreloadDelay` and `RateLimit`. |
 | `Placeholder`    | 256×256 `#11151a` PNG                                | Served when upstream fails. |
+| `CacheControl`   | `public, max-age=86400` (`DefaultCacheControl`)      | `Cache-Control` of served tiles. Use `private, max-age=86400` when tiles sit behind a login: which tiles someone views shows where they go. |
 | `Logger`         | discard                                              | `*slog.Logger` for diagnostics. |
 | `HTTPClient`     | 15s timeout                                          | The client is copied rather than modified, and `UserAgent` is enforced on the copy. |
 | `Clock`          | `time.Now`                                           | Used for staleness, stored-tile mtimes and preload timestamps. |
@@ -92,6 +93,13 @@ a long time, and **forbids bulk downloading**. With the OSM servers, use this
 package as an on-demand cache only. Keep the long `MaxAge`, leave the default
 `Concurrency`, and do not preload: set `DisablePreload`, or point `Upstream` at
 a tile server that allows bulk downloads before calling `Preload`.
+
+The policy also asks for a User-Agent that identifies your application. The
+OSM servers answer a regular browser User-Agent (such as `DefaultUserAgent`)
+with an "Access blocked" image, sent as a normal 200 PNG, so the cache cannot
+tell it from a tile and stores it. If you do not want to identify yourself,
+use another tile service (many take an access key in the URL) or a tile
+server of your own.
 
 ## License
 
